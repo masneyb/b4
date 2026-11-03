@@ -3891,6 +3891,7 @@ def _build_review_email(
         msg['To'] = b4.format_addrs(deduped_to, clean=False)
         if deduped_cc:
             msg['Cc'] = b4.format_addrs(deduped_cc, clean=False)
+        b4.add_me_too(msg)
     if header_info.get('bcc'):
         msg['Bcc'] = header_info['bcc']
     msg['In-Reply-To'] = f'<{header_info["msgid"]}>'

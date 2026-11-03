@@ -1150,7 +1150,10 @@ Contributor-oriented settings
 
    :term:`b4.send-me-too`
      Instructs b4 to include your own address when sending. Set by default,
-     use ``no`` to suppress sending to yourself.
+     use ``no`` to suppress sending to yourself. This applies to patches
+     sent with ``b4 send`` and to replies and thank-you notes sent from
+     ``b4 review``. Review replies whose recipients you edited by hand are
+     sent to exactly those recipients.
 
      Default: ``yes``
 

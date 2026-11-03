@@ -633,6 +633,7 @@ class FollowupReplyPreviewScreen(ModalScreen[Optional[str]]):
     def on_mount(self) -> None:
         body = prepare_followup_reply_body(self._reply_text)
         msg = self._entry['lmsg'].make_reply(body)
+        b4.add_me_too(msg)
         viewer = self.query_one('#followup-preview-viewer', RichLog)
         _render_email_to_viewer(viewer, msg, ts=resolve_styles(self.app))
 
