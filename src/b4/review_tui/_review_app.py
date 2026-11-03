@@ -1897,6 +1897,7 @@ class ReviewApp(LoreNodeShutdownMixin, CheckRunnerMixin, App[None]):
         """Build and immediately send a quick reply to a follow-up message."""
         reply_text = prepare_followup_reply_body(text)
         msg = entry['lmsg'].make_reply(reply_text)
+        b4.add_me_too(msg)
         try:
             with self.suspend():
                 smtp, fromaddr = b4.get_smtp(dryrun=self._email_dryrun)

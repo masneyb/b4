@@ -1022,6 +1022,35 @@ integrate your b4 workflow with patchwork.
 
      Default: ``None``
 
+   :term:`b4.pw-user`
+     Your username on the patchwork server. When this is set and
+     :term:`b4.pw-key` is not, b4 asks your git credential helpers for the
+     password of this user on the :term:`b4.pw-url` host, and uses it as
+     the API key. This lets you keep the key in a password manager instead
+     of storing it in plain text in your git config. b4 asks at most once
+     per invocation. For example::
+
+         pw-url = https://patchwork.kernel.org/
+         pw-user = jdoe
+
+     To store the key with a credential helper that supports it::
+
+         printf 'protocol=https\nhost=patchwork.kernel.org\nusername=jdoe\npassword=%s\n' \
+             "$PW_API_KEY" | git credential approve
+
+     You can also inject the key via a password manager by placing the following
+     in your .gitconfig:
+
+        [credential "https://user@patchwork.kernel.org"]
+        helper = "!f() { echo password=$(pass korg-patchwork-token); }; f"
+
+     If no helper returns a password, git may prompt for one on the
+     terminal. This setting is ignored in the in-tree ``.b4-config`` file.
+
+     Default: ``None``
+
+     .. versionadded:: v0.17
+
 .. _contributor_settings:
 
 Contributor-oriented settings
@@ -1150,7 +1179,10 @@ Contributor-oriented settings
 
    :term:`b4.send-me-too`
      Instructs b4 to include your own address when sending. Set by default,
-     use ``no`` to suppress sending to yourself.
+     use ``no`` to suppress sending to yourself. This applies to patches
+     sent with ``b4 send`` and to replies and thank-you notes sent from
+     ``b4 review``. Review replies whose recipients you edited by hand are
+     sent to exactly those recipients.
 
      Default: ``yes``
 

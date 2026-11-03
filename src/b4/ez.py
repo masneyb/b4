@@ -3334,8 +3334,7 @@ def cmd_send(cmdargs: argparse.Namespace) -> None:
                 ccdests.append(btr.addr)
 
         excludes = b4.get_excluded_addrs()
-        conf_me_too = str(config.get('send-me-too', 'yes')).lower()
-        if cmdargs.not_me_too or conf_me_too in {'no', 'n', 'false', '0'}:
+        if cmdargs.not_me_too or not b4.get_send_me_too():
             excludes.add(myemail)
 
     tos: Set[str] = set()
