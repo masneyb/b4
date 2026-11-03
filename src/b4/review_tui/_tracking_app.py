@@ -5183,7 +5183,7 @@ class TrackingApp(LoreNodeShutdownMixin, CheckRunnerMixin, App[Optional[str]]):
 
         # Build a minimal cmdargs for ty.generate_am_thanks / make_reply
         cmdargs = argparse.Namespace()
-        cmdargs.metoo = False
+        cmdargs.metoo = b4.get_send_me_too()
         cmdargs.since = None
 
         try:

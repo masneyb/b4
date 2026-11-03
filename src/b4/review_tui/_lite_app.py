@@ -958,6 +958,7 @@ class LiteThreadScreen(ModalScreen[None]):
         lmsg = node.lmsg
         text = prepare_followup_reply_body(text)
         msg = lmsg.make_reply(text)
+        b4.add_me_too(msg)
         try:
             with self.app.suspend():
                 smtp, fromaddr = b4.get_smtp(dryrun=self._email_dryrun)
