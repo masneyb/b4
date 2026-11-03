@@ -2618,6 +2618,43 @@ def test_git_head_restore_args_round_trip(gitdir: str) -> None:
     assert b4.git_head_restore_args(gitdir) == restore
 
 
+class TestAddMeToo:
+    """b4.send-me-too Ccs the user unless they are already a recipient."""
+
+    @staticmethod
+    def _msg(cc: Optional[str] = None) -> email.message.EmailMessage:
+        msg = email.message.EmailMessage()
+        msg['From'] = 'Alice <alice@example.org>'
+        msg['To'] = 'bob@example.org'
+        if cc:
+            msg['Cc'] = cc
+        return msg
+
+    def test_adds_sender_to_cc(self) -> None:
+        msg = self._msg()
+        b4.add_me_too(msg)
+        assert msg['Cc'] == 'Test Override <test-override@example.com>'
+
+    def test_appends_to_existing_cc(self) -> None:
+        msg = self._msg(cc='carol@example.org')
+        b4.add_me_too(msg)
+        assert msg['Cc'] == (
+            'carol@example.org, Test Override <test-override@example.com>'
+        )
+
+    def test_skips_existing_recipient(self) -> None:
+        msg = self._msg(cc='TEST-OVERRIDE@example.com')
+        b4.add_me_too(msg)
+        assert msg['Cc'] == 'TEST-OVERRIDE@example.com'
+
+    @pytest.mark.parametrize('value', ['no', 'False', '0'])
+    def test_disabled(self, monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+        monkeypatch.setitem(b4.MAIN_CONFIG, 'send-me-too', value)
+        msg = self._msg()
+        b4.add_me_too(msg)
+        assert msg['Cc'] is None
+
+
 class TestUnicodeControlChars:
     """The Cf-character guard in get_am_message() must raise BadCharsError
     instead of calling sys.exit(), so that interactive front-ends (the
