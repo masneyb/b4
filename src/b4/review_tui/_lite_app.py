@@ -959,6 +959,7 @@ class LiteThreadScreen(ModalScreen[None]):
         lmsg = node.lmsg
         text = prepare_followup_reply_body(text)
         msg = lmsg.make_reply(text)
+        b4.add_me_too(msg)
         sent = send_suspended(
             self.app, [msg], patatt_sign=self._patatt_sign, dryrun=self._email_dryrun
         )

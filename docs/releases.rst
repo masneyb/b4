@@ -350,7 +350,8 @@ New configuration options
 
 ``b4.send-me-too``
   Set to ``no`` to suppress including your own address in the ``Cc``
-  when sending patches with ``b4 send``. Defaults to ``yes`` (include
+  when sending patches with ``b4 send``, thank-you notes with ``b4 ty``,
+  and to replies from ``b4 review``.  Defaults to ``yes`` (include
   yourself).
 
 **In-tree ``.b4-config`` changes**

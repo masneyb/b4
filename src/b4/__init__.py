@@ -6788,6 +6788,46 @@ def get_excluded_addrs() -> Set[str]:
     return excludes
 
 
+def get_send_me_too() -> bool:
+    """Whether b4.send-me-too asks us to include ourselves as a recipient."""
+    config = get_main_config()
+    conf_me_too = str(config.get('send-me-too', 'yes')).lower()
+    return conf_me_too not in {'no', 'n', 'false', '0'}
+
+
+def add_me_too(
+    msg: EmailMessage,
+    enabled: Optional[bool] = None,
+    me: Optional[Tuple[str, str]] = None,
+) -> None:
+    """Cc ourselves on *msg* when b4.send-me-too is enabled.
+
+    *enabled* overrides the b4.send-me-too setting when not None, e.g. for
+    an explicit command-line flag. *me* is the (name, email) to Cc, and
+    defaults to the user's configured identity. Nothing is added if we are
+    already among the To or Cc recipients.
+    """
+    if enabled is None:
+        enabled = get_send_me_too()
+    if not enabled:
+        return
+    if me is None:
+        usercfg = get_user_config()
+        me = (str(usercfg.get('name', '')), str(usercfg.get('email', '')))
+    myname, myemail = me
+    if not myemail:
+        return
+    recipients = email.utils.getaddresses(
+        [str(x) for x in msg.get_all('to', []) + msg.get_all('cc', [])]
+    )
+    if myemail.lower() in {x[1].lower() for x in recipients}:
+        return
+    ccs = [str(x) for x in msg.get_all('cc', []) if str(x).strip()]
+    ccs.append(format_addrs([(myname, myemail)], clean=False))
+    del msg['Cc']
+    msg['Cc'] = ', '.join(ccs)
+
+
 def cleanup_email_addrs(
     addresses: List[Tuple[str, str]], excludes: Set[str], gitdir: Optional[str]
 ) -> List[Tuple[str, str]]:

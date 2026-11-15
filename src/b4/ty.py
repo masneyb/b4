@@ -105,7 +105,8 @@ def make_reply(
     )
 
     # Exclude ourselves and original sender from allto or allcc
-    if not cmdargs.metoo:
+    metoo = cmdargs.metoo or b4.get_send_me_too()
+    if not metoo:
         excludes.add(jsondata['myemail'])
     excludes.add(jsondata['fromemail'])
     allto = b4.cleanup_email_addrs(
@@ -121,6 +122,11 @@ def make_reply(
     msg.add_header('To', b4.format_addrs(allto))
     if allcc:
         msg.add_header('Cc', b4.format_addrs(allcc))
+    b4.add_me_too(
+        msg,
+        enabled=metoo,
+        me=(str(jsondata['myname']), jsondata['myemail']),
+    )
     msg['In-Reply-To'] = '<%s>' % jsondata['msgid']
     if isinstance(jsondata['references'], list) and len(jsondata['references']):
         msg['References'] = '%s <%s>' % (jsondata['references'], jsondata['msgid'])

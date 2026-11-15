@@ -1886,6 +1886,7 @@ class ReviewApp(LoreNodeShutdownMixin, CheckRunnerMixin, App[None]):
         """Build and immediately send a quick reply to a follow-up message."""
         reply_text = prepare_followup_reply_body(text)
         msg = entry['lmsg'].make_reply(reply_text)
+        b4.add_me_too(msg)
         sent = send_suspended(
             self, [msg], patatt_sign=self._patatt_sign, dryrun=self._email_dryrun
         )
