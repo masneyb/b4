@@ -1,3 +1,4 @@
+import email.utils
 import os
 import pathlib
 from email.message import EmailMessage
@@ -765,6 +766,46 @@ def test_generate_am_thanks_does_not_leak_between_branches(
     assert second['summary'] == f'[1/1] frobnicate\n      commit: {commit}'
     assert second['treename'] == 'local tree'
     assert b4.MAIN_CONFIG['thanks-commit-url-mask'] is None
+
+
+def _make_ty_reply(metoo: Optional[bool], cc: str = '') -> EmailMessage:
+    jsondata = _am_jsondata('0123456789abcdef0123456789abcdef01234567')
+    jsondata['cc'] = cc
+    cmdargs = mock.Mock(metoo=metoo, since=None)
+    return b4.ty.make_reply('Thanks!', jsondata, None, cmdargs)
+
+
+@pytest.mark.parametrize(
+    'conf,metoo,expected',
+    [
+        ('yes', None, True),
+        ('no', None, False),
+        ('no', True, True),
+    ],
+)
+def test_make_reply_me_too(
+    monkeypatch: pytest.MonkeyPatch,
+    conf: str,
+    metoo: Optional[bool],
+    expected: bool,
+) -> None:
+    """--me-too wins; otherwise b4.send-me-too decides."""
+    monkeypatch.setitem(b4.MAIN_CONFIG, 'send-me-too', conf)
+    msg = _make_ty_reply(metoo)
+    if expected:
+        assert msg['Cc'] == 'Test <test@example.com>'
+    else:
+        assert msg['Cc'] is None
+
+
+def test_make_reply_me_too_keeps_existing_cc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Already being Cc'd on the original is enough; no duplicate added."""
+    monkeypatch.setitem(b4.MAIN_CONFIG, 'send-me-too', 'yes')
+    msg = _make_ty_reply(None, cc='Test <test@example.com>, other@example.com')
+    ccs = [x[1] for x in email.utils.getaddresses([str(msg['Cc'])])]
+    assert ccs == ['test@example.com', 'other@example.com']
 
 
 def test_queue_message_check_headers(

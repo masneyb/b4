@@ -2132,6 +2132,26 @@ class TestBuildReviewEmail:
         assert msg['To'] == 'custom@example.com'
         assert msg['Cc'] == 'other@example.com'
 
+    def test_send_me_too_ccs_reviewer(self) -> None:
+        msg = self._build(self._make_series(cc='other@example.com'))
+        assert msg is not None
+        assert msg['Cc'] == (
+            'maintainer@example.com, other@example.com, Reviewer <reviewer@example.com>'
+        )
+
+    def test_send_me_too_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setitem(b4.MAIN_CONFIG, 'send-me-too', 'no')
+        msg = self._build()
+        assert msg is not None
+        assert msg['Cc'] == 'maintainer@example.com'
+
+    def test_send_me_too_skipped_for_edited_recipients(self) -> None:
+        series = self._make_series(to='custom@example.com', cc='')
+        series['header-info']['tocc-edited'] = True
+        msg = self._build(series)
+        assert msg is not None
+        assert msg['Cc'] is None
+
 
 # -- Tests for get_reference_message() ---------------------------------------
 
