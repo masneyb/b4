@@ -37,10 +37,23 @@ def settestdefaults(
     )
     monkeypatch.setenv('XDG_DATA_HOME', str(tmp_path))
     monkeypatch.setenv('XDG_CACHE_HOME', str(tmp_path))
+    # Neutralize the user's signing config so tests never invoke gpg or
+    # open an editor (tag.gpgsign turns a lightweight tag into an
+    # annotated one that prompts for a message).
+    git_config_overrides = {
+        'commit.gpgsign': 'false',
+        'tag.gpgsign': 'false',
+        'tag.forcesignannotated': 'false',
+    }
     git_config_count = int(os.environ.get('GIT_CONFIG_COUNT', '0'))
-    monkeypatch.setenv('GIT_CONFIG_COUNT', str(git_config_count + 1))
-    monkeypatch.setenv(f'GIT_CONFIG_KEY_{git_config_count}', 'commit.gpgsign')
-    monkeypatch.setenv(f'GIT_CONFIG_VALUE_{git_config_count}', 'false')
+    monkeypatch.setenv(
+        'GIT_CONFIG_COUNT', str(git_config_count + len(git_config_overrides))
+    )
+    for idx, (key, value) in enumerate(
+        git_config_overrides.items(), start=git_config_count
+    ):
+        monkeypatch.setenv(f'GIT_CONFIG_KEY_{idx}', key)
+        monkeypatch.setenv(f'GIT_CONFIG_VALUE_{idx}', value)
     # This lets us avoid execvp-ing from inside b4 when testing
     monkeypatch.setattr(sys, '_running_in_pytest', True, raising=False)
 
