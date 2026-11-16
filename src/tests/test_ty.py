@@ -401,7 +401,7 @@ def test_get_check_repo_config_override(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def _init_repo(path: str) -> None:
-    ecode, out = b4.git_run_command(None, ['init', path])
+    ecode, out = b4.git_run_command(None, ['init', '-b', 'master', path])
     assert ecode == 0, out
     b4.git_set_config(path, 'user.name', 'Test')
     b4.git_set_config(path, 'user.email', 'test@example.com')
