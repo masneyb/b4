@@ -2789,10 +2789,33 @@ def get_thread_mbox(topdir: str, blob_sha: str) -> Optional[bytes]:
     return out
 
 
+def _next_known_from_references_local(
+    missing: str,
+    references: Optional[List[str]],
+    patch_msgids: Dict[str, int],
+    msgid_map: Dict[str, Any],
+) -> Optional[str]:
+    """Find the closest known ancestor of *missing* using References.
+
+    Duplicated from review_tui._common to avoid a cross-layer import.
+    """
+    if not references:
+        return None
+    try:
+        candidates = references[: references.index(missing)]
+    except ValueError:
+        candidates = references
+    for refid in reversed(candidates):
+        if refid in patch_msgids or refid in msgid_map:
+            return refid
+    return None
+
+
 def _resolve_patch_for_followup_local(
     in_reply_to: Optional[str],
     patch_msgids: Dict[str, int],
     msgid_map: Dict[str, Any],
+    references: Optional[List[str]] = None,
 ) -> Optional[int]:
     """Walk the in_reply_to chain to find which patch a follow-up belongs to.
 
@@ -2807,7 +2830,10 @@ def _resolve_patch_for_followup_local(
         seen.add(current)
         lmsg = msgid_map.get(current)
         if lmsg is None:
-            break
+            current = _next_known_from_references_local(
+                current, references, patch_msgids, msgid_map
+            )
+            continue
         current = lmsg.in_reply_to
     return None
 
@@ -2816,6 +2842,7 @@ def _get_followup_depth_local(
     in_reply_to: Optional[str],
     patch_msgids: Dict[str, int],
     msgid_map: Dict[str, Any],
+    references: Optional[List[str]] = None,
     max_depth: int = 5,
 ) -> int:
     """Return the threading depth of a follow-up relative to its patch.
@@ -2833,7 +2860,10 @@ def _get_followup_depth_local(
         seen.add(current)
         lmsg = msgid_map.get(current)
         if lmsg is None:
-            break
+            current = _next_known_from_references_local(
+                current, references, patch_msgids, msgid_map
+            )
+            continue
         depth += 1
         current = lmsg.in_reply_to
     return min(depth, max_depth)
@@ -2876,7 +2906,7 @@ def _parse_msgs_to_followup_comments(
     followup_comments: Dict[int, List[Dict[str, Any]]] = {}
     for lmsg in sorted(lmbx.followups, key=lambda m: m.date):
         display_idx = _resolve_patch_for_followup_local(
-            lmsg.in_reply_to, patch_msgids, lmbx.msgid_map
+            lmsg.in_reply_to, patch_msgids, lmbx.msgid_map, lmsg.references
         )
         if display_idx is None:
             continue
@@ -2898,7 +2928,7 @@ def _parse_msgs_to_followup_comments(
             'msgid': lmsg.msgid,
             'subject': lmsg.subject,
             'depth': _get_followup_depth_local(
-                lmsg.in_reply_to, patch_msgids, lmbx.msgid_map
+                lmsg.in_reply_to, patch_msgids, lmbx.msgid_map, lmsg.references
             ),
         }
         followup_comments.setdefault(display_idx, []).append(entry)
