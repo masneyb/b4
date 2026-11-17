@@ -26,7 +26,11 @@ from textual.widgets import ListView
 import b4
 import b4.review
 import b4.review.tracking
-from b4.review_tui._common import filter_range_diff_for_commit
+from b4.review_tui._common import (
+    _get_followup_depth,
+    _resolve_patch_for_followup,
+    filter_range_diff_for_commit,
+)
 from b4.review_tui._review_app import FollowupItem, PatchListItem, ReviewApp
 
 from .helpers.tracking import create_review_branch
@@ -1029,3 +1033,51 @@ class TestPatchListItemPreMountStyling:
         """The held reference must be what compose() yields, not a copy."""
         item = PatchListItem('a patch', 1, 'done')
         assert list(item.compose()) == [item._label]
+
+
+class TestFollowupThreadingMissingParent:
+    """A follow-up whose In-Reply-To parent never reached the archive must
+    still be attached to its patch by walking its References header."""
+
+    # cover <- patch1 <- review <- reply <- (missing) <- late-reply
+    PATCH_MSGIDS = {'cover@x': 0, 'patch1@x': 1}
+    REFERENCES = ['cover@x', 'patch1@x', 'review@x', 'reply@x', 'missing@x']
+
+    @staticmethod
+    def _msgid_map() -> Dict[str, Any]:
+        return {
+            'review@x': mock.Mock(in_reply_to='patch1@x', has_diff=False),
+            'reply@x': mock.Mock(in_reply_to='review@x', has_diff=False),
+        }
+
+    def test_resolves_patch_through_references(self) -> None:
+        assert (
+            _resolve_patch_for_followup(
+                'missing@x', self.PATCH_MSGIDS, self._msgid_map(), self.REFERENCES
+            )
+            == 1
+        )
+
+    def test_depth_skips_missing_parent(self) -> None:
+        assert (
+            _get_followup_depth(
+                'missing@x', self.PATCH_MSGIDS, self._msgid_map(), self.REFERENCES
+            )
+            == 2
+        )
+
+    def test_without_references_is_unresolved(self) -> None:
+        assert (
+            _resolve_patch_for_followup(
+                'missing@x', self.PATCH_MSGIDS, self._msgid_map()
+            )
+            is None
+        )
+
+    def test_tracking_copy_resolves_patch_through_references(self) -> None:
+        assert (
+            b4.review.tracking._resolve_patch_for_followup_local(
+                'missing@x', self.PATCH_MSGIDS, self._msgid_map(), self.REFERENCES
+            )
+            == 1
+        )

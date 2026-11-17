@@ -541,6 +541,37 @@ def test_get_series_twice_adds_no_duplicate_trailers(
     assert _followup_trailer_keys(again) == before
 
 
+def test_followup_with_missing_parent_uses_references(sampledir: str) -> None:
+    """A reply whose In-Reply-To parent is absent from the thread still
+    has its trailers attached via the closest known References entry."""
+    lmbx = b4.LoreMailbox()
+    for msg in b4.get_msgs_from_mailbox_or_maildir(
+        f'{sampledir}/trailers-followup-with-cover.mbox'
+    ):
+        lmbx.add_message(msg)
+    reply = email.message.EmailMessage()
+    reply['From'] = 'Missing Parent <missing.parent@example.com>'
+    reply['Subject'] = 'Re: [PATCH v2 2/2] Simple test 2'
+    reply['Date'] = 'Tue, 30 Aug 2022 11:19:07 -0400'
+    reply['Message-Id'] = '<late-reply@example.com>'
+    reply['In-Reply-To'] = '<not-in-archive@example.com>'
+    reply['References'] = (
+        '<cover-message@example.com> <patch-2-message@example.com> '
+        '<not-in-archive@example.com>'
+    )
+    reply.set_content(
+        'Agreed.\n\nReviewed-by: Missing Parent <missing.parent@example.com>\n'
+    )
+    lmbx.add_message(reply)
+    lser = lmbx.get_series()
+    assert lser is not None
+    patch2 = lser.patches[2]
+    assert patch2 is not None
+    assert ('Reviewed-by', 'Missing Parent <missing.parent@example.com>') in [
+        (t.name, t.value) for t in patch2.followup_trailers
+    ]
+
+
 def test_same_trailer_in_two_replies_is_kept_twice(sampledir: str) -> None:
     """Only a repeat from the same message is a duplicate, not a second reply."""
     msgs = b4.get_msgs_from_mailbox_or_maildir(
