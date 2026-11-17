@@ -643,6 +643,21 @@ class LoreMailbox:
                         break
             elif (pmsg := self.msgid_map.get(fmsg.in_reply_to)) is not None:
                 logger.debug('Found in-reply-to %s in msgid_map', fmsg.in_reply_to)
+            else:
+                # The parent never made it into the thread (e.g. it is
+                # missing from the archive), so use the closest ancestor
+                # from References that we do have
+                for refid in reversed(fmsg.references):
+                    if (
+                        refid not in (fmsg.msgid, fmsg.in_reply_to)
+                        and (pmsg := self.msgid_map.get(refid)) is not None
+                    ):
+                        logger.debug(
+                            'Missing in-reply-to %s, using references entry %s',
+                            fmsg.in_reply_to,
+                            refid,
+                        )
+                        break
             if pmsg is None:
                 # Can't find the message we're replying to here
                 continue
