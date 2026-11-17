@@ -1934,7 +1934,7 @@ class ReviewApp(LoreNodeShutdownMixin, CheckRunnerMixin, App[None]):
         all_followups = lmbx.followups + lmbx.unknowns
         for lmsg in sorted(all_followups, key=lambda m: m.date):
             display_idx = _resolve_patch_for_followup(
-                lmsg.in_reply_to, patch_msgids, lmbx.msgid_map
+                lmsg.in_reply_to, patch_msgids, lmbx.msgid_map, lmsg.references
             )
             if display_idx is None:
                 continue
@@ -1966,11 +1966,11 @@ class ReviewApp(LoreNodeShutdownMixin, CheckRunnerMixin, App[None]):
                 'subject': lmsg.full_subject,
                 'reply': lmsg.reply,
                 'depth': _get_followup_depth(
-                    lmsg.in_reply_to, patch_msgids, lmbx.msgid_map
+                    lmsg.in_reply_to, patch_msgids, lmbx.msgid_map, lmsg.references
                 ),
                 'lmsg': lmsg,
                 'replies-to-diff': _chain_has_additional_patch(
-                    lmsg.in_reply_to, patch_msgids, lmbx.msgid_map
+                    lmsg.in_reply_to, patch_msgids, lmbx.msgid_map, lmsg.references
                 ),
             }
             self._followup_comments.setdefault(display_idx, []).append(entry)

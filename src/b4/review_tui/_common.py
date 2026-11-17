@@ -712,15 +712,42 @@ def _write_followup_comments(
 _FOLLOWUP_MAX_DEPTH = 5
 
 
+def _next_known_from_references(
+    missing: str,
+    references: Optional[List[str]],
+    patch_msgids: Dict[str, int],
+    msgid_map: Dict[str, 'b4.LoreMessage'],
+) -> Optional[str]:
+    """Find the closest known ancestor of *missing* using References.
+
+    When a message in the in_reply_to chain is not in the thread (e.g. it
+    never made it to the archive), the References header of the follow-up
+    still lists the rest of the ancestry.  Return the nearest entry before
+    *missing* that is either a series patch or a message we have.
+    """
+    if not references:
+        return None
+    try:
+        candidates = references[: references.index(missing)]
+    except ValueError:
+        candidates = references
+    for refid in reversed(candidates):
+        if refid in patch_msgids or refid in msgid_map:
+            return refid
+    return None
+
+
 def _get_followup_depth(
     in_reply_to: Optional[str],
     patch_msgids: Dict[str, int],
     msgid_map: Dict[str, 'b4.LoreMessage'],
+    references: Optional[List[str]] = None,
 ) -> int:
     """Return the threading depth of a follow-up relative to its patch.
 
     Depth 0 = direct reply to a patch; depth N = N hops through follow-up
     replies. Capped at _FOLLOWUP_MAX_DEPTH to prevent runaway indentation.
+    Missing messages in the chain are skipped using *references*.
     """
     depth = 0
     seen: Set[str] = set()
@@ -731,7 +758,10 @@ def _get_followup_depth(
         seen.add(current)
         lmsg = msgid_map.get(current)
         if lmsg is None:
-            break
+            current = _next_known_from_references(
+                current, references, patch_msgids, msgid_map
+            )
+            continue
         depth += 1
         current = lmsg.in_reply_to
     return min(depth, _FOLLOWUP_MAX_DEPTH)
@@ -741,9 +771,12 @@ def _resolve_patch_for_followup(
     in_reply_to: Optional[str],
     patch_msgids: Dict[str, int],
     msgid_map: Dict[str, 'b4.LoreMessage'],
+    references: Optional[List[str]] = None,
 ) -> Optional[int]:
     """Walk the in_reply_to chain to find which patch a follow-up belongs to.
 
+    If a message in the chain is missing from the thread, fall back to
+    *references* (the follow-up's References header) to keep walking.
     Returns the display index (0=cover, 1..N=patches) or None.
     """
     seen: Set[str] = set()
@@ -754,7 +787,10 @@ def _resolve_patch_for_followup(
         seen.add(current)
         lmsg = msgid_map.get(current)
         if lmsg is None:
-            break
+            current = _next_known_from_references(
+                current, references, patch_msgids, msgid_map
+            )
+            continue
         current = lmsg.in_reply_to
     return None
 
@@ -763,6 +799,7 @@ def _chain_has_additional_patch(
     in_reply_to: Optional[str],
     patch_msgids: Dict[str, int],
     msgid_map: Dict[str, 'b4.LoreMessage'],
+    references: Optional[List[str]] = None,
 ) -> bool:
     """Check whether the in-reply-to chain passes through a message that
     contains its own diff before reaching a known series patch.
@@ -779,7 +816,10 @@ def _chain_has_additional_patch(
         seen.add(current)
         lmsg = msgid_map.get(current)
         if lmsg is None:
-            break
+            current = _next_known_from_references(
+                current, references, patch_msgids, msgid_map
+            )
+            continue
         if lmsg.has_diff:
             return True
         current = lmsg.in_reply_to
